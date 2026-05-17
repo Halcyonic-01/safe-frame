@@ -1,0 +1,355 @@
+PROJECT CONTEXT:
+We are building a localhost-based AI privacy protection web application called “SafeFrame”. The frontend is already implemented in React. The backend must now be integrated using Flask and existing Python computer vision pipelines.
+
+GOAL:
+Allow users to:
+
+1. Drag & drop images/videos
+2. Select ONE OR MULTIPLE privacy pipelines
+3. Process media locally
+4. Download final blurred result automatically
+
+The backend should support BOTH:
+
+* images
+* videos
+
+Video processing must work by:
+
+* extracting frames
+* applying selected image pipelines frame-by-frame
+* recombining frames into final video
+
+========================================================
+CURRENT COMPLETED PYTHON PIPELINES
+
+We already have 4 working Python computer vision pipelines:
+
+1. OCR + Regex Blur
+
+* detects:
+    * Aadhaar
+    * PAN
+    * phone
+    * email
+    * bank details
+    * IFSC
+    * cards
+* uses EasyOCR + regex
+* blurs detected text regions
+
+2. Face Blur
+
+* OpenCV Haar Cascade
+* detects faces
+* applies Gaussian blur
+
+3. QR + Barcode Blur
+
+* OpenCV QRCodeDetector
+* pyzbar
+* blurs QR/barcode regions
+
+4. Vehicle Number Plate Blur
+
+* YOLOv8-based
+* detects number plates
+* applies blur
+
+========================================================
+IMPORTANT BACKEND ARCHITECTURE DECISION
+
+DO NOT implement real microservices.
+
+We are using:
+
+* Flask backend
+* modular pipeline structure
+
+Desired architecture:
+
+React Frontend
+↓
+Flask API Backend
+↓
+Independent Pipeline Modules
+
+========================================================
+EXPECTED PROJECT STRUCTURE
+
+project/
+│
+├── frontend/
+│
+├── backend/
+│   │
+│   ├── app.py
+│   │
+│   ├── pipelines/
+│   │   ├── ocr.py
+│   │   ├── face.py
+│   │   ├── qr.py
+│   │   └── vehicle.py
+│   │
+│   ├── video_utils.py
+│   │
+│   ├── uploads/
+│   └── outputs/
+
+========================================================
+VERY IMPORTANT PIPELINE REQUIREMENT
+
+ALL 4 pipeline files MUST expose THIS exact function:
+
+def process_image_array(image):
+
+Requirements:
+
+* input:
+    OpenCV image array
+* output:
+    modified OpenCV image array
+* NO matplotlib
+* NO cv2.imshow
+* NO saving inside pipeline
+* NO hardcoded filenames
+
+The pipeline should ONLY:
+
+* process image
+* return modified image
+
+Example:
+
+def process_image_array(image):
+
+# detection logic
+# blur logic
+return image
+
+========================================================
+MULTI-PIPELINE PROCESSING REQUIREMENT
+
+The user can select:
+
+* one pipeline
+* multiple pipelines
+* all four pipelines
+
+Examples:
+[“ocr”]
+[“face”, “vehicle”]
+[“ocr”, “face”, “qr”, “vehicle”]
+
+Backend must sequentially apply selected pipelines on SAME image/frame.
+
+Example flow:
+
+Original
+↓
+OCR blur
+↓
+Face blur
+↓
+QR blur
+↓
+Vehicle blur
+↓
+Final result
+
+========================================================
+IMAGE PROCESSING FLOW
+
+1. user uploads image
+2. frontend sends image + selected pipelines
+3. backend loads image
+4. backend sequentially applies pipelines
+5. backend saves final output
+6. backend returns processed file
+7. frontend auto-downloads result
+
+========================================================
+VIDEO PROCESSING FLOW
+
+Videos must be processed using SAME image pipelines.
+
+Flow:
+
+1. extract video frames
+2. apply selected image pipelines on each frame
+3. recombine frames
+4. save processed video
+
+Accepted video formats:
+
+* .mp4
+* .avi
+* .mov
+
+Accepted image formats:
+
+* .jpg
+* .jpeg
+* .png
+
+========================================================
+BACKEND API REQUIREMENTS
+
+Use Flask + flask-cors.
+
+Create endpoint:
+
+POST /process
+
+Request:
+multipart/form-data
+
+Fields:
+
+* file
+* pipelines
+
+Example:
+pipelines = [“ocr”, “face”]
+
+Backend should:
+
+* detect file type
+* process image OR video
+* save final result in outputs/
+
+========================================================
+OUTPUT FILE REQUIREMENT
+
+Output filename format:
+
+originalname_blur.ext
+
+Examples:
+car.jpg
+→ car_blur.jpg
+
+video.mp4
+→ video_blur.mp4
+
+========================================================
+DOWNLOAD REQUIREMENT
+
+Frontend should automatically download processed result after backend response.
+
+========================================================
+FRONTEND REQUIREMENTS
+
+React frontend already exists.
+
+Needed frontend features:
+
+* drag & drop upload
+* multiple pipeline selection
+* process button
+* automatic download
+* preview optional
+
+Recommended:
+react-dropzone
+
+========================================================
+FRONTEND → BACKEND REQUEST FORMAT
+
+Use FormData.
+
+Example:
+
+const formData = new FormData();
+
+formData.append(“file”, selectedFile);
+
+selectedPipelines.forEach(pipeline => {
+formData.append(“pipelines”, pipeline);
+});
+
+fetch(“http://127.0.0.1:5000/process”, {
+method: “POST”,
+body: formData
+});
+
+========================================================
+BACKEND LOGIC REQUIREMENTS
+
+Use:
+request.form.getlist(“pipelines”)
+
+Create:
+PIPELINES dictionary
+
+Example:
+
+PIPELINES = {
+“ocr”: ocr_process,
+“face”: face_process,
+“qr”: qr_process,
+“vehicle”: vehicle_process
+}
+
+========================================================
+VIDEO PROCESSING REQUIREMENT
+
+Create:
+video_utils.py
+
+Use OpenCV VideoCapture + VideoWriter.
+
+For every frame:
+
+* apply selected pipelines sequentially
+* write processed frame
+
+========================================================
+IMPORTANT IMPLEMENTATION NOTES
+
+DO:
+
+* keep architecture simple
+* keep localhost only
+* keep backend modular
+* keep pipelines independent
+
+DO NOT:
+
+* use Docker
+* use Kubernetes
+* use cloud deployment
+* use databases
+* use authentication
+* use real microservices
+
+========================================================
+DESIRED FINAL USER EXPERIENCE
+
+1. User opens localhost React app
+2. Drag & drop image/video
+3. Select pipelines
+4. Click Generate
+5. Backend processes media
+6. Final blurred file downloads automatically
+
+========================================================
+FINAL OBJECTIVE
+
+Generate:
+
+* production-ready Flask backend
+* modular architecture
+* React integration logic
+* video frame processing utility
+* multi-pipeline chaining support
+* automatic output download system
+
+The implementation should prioritize:
+
+* simplicity
+* stability
+* localhost execution
+* easy demo capability
+* maintainability
+* compatibility with existing Python CV scripts
