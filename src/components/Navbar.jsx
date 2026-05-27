@@ -74,15 +74,17 @@ export default function Navbar({ currentPage, setCurrentPage }) {
       </div>
 
       {/* CTA */}
-      <motion.button
-        onClick={() => setCurrentPage("dashboard")}
-        className="btn-arc font-display text-sm font-600 text-white px-5 py-2.5 rounded-lg relative z-0"
-        whileHover={{ scale: 1.03, y: -1 }}
-        whileTap={{ scale: 0.97 }}
-        style={{ boxShadow: "0 0 20px rgba(91,143,255,0.3)" }}
-      >
-        Open App
-      </motion.button>
+      {currentPage !== "dashboard" && (
+        <motion.button
+          onClick={() => setCurrentPage("dashboard")}
+          className="btn-arc font-display text-sm font-600 text-white px-5 py-2.5 rounded-lg relative z-0"
+          whileHover={{ scale: 1.03, y: -1 }}
+          whileTap={{ scale: 0.97 }}
+          style={{ boxShadow: "0 0 20px rgba(91,143,255,0.3)" }}
+        >
+          Open App
+        </motion.button>
+      )}
     </motion.nav>
   );
 }

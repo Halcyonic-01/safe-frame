@@ -69,11 +69,49 @@ export default function Dashboard({ setCurrentPage }) {
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [pipelines, setPipelines] = useState({ face: true, ocr: true, qr: true, vehicle: false });
-  const [processedFiles, setProcessedFiles] = useState([]);
-  const [activity, setActivity] = useState([]);
+  const [processedFiles, setProcessedFiles] = useState(() => {
+    try {
+      const saved = localStorage.getItem("sf_processedFiles");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [activity, setActivity] = useState(() => {
+    try {
+      const saved = localStorage.getItem("sf_activity");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [backendStatus, setBackendStatus] = useState("checking");
-  const [totalProcessed, setTotalProcessed] = useState(0);
+  const [totalProcessed, setTotalProcessed] = useState(() => {
+    const saved = localStorage.getItem("sf_totalProcessed");
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sf_processedFiles", JSON.stringify(processedFiles));
+  }, [processedFiles]);
+
+  useEffect(() => {
+    localStorage.setItem("sf_activity", JSON.stringify(activity));
+  }, [activity]);
+
+  useEffect(() => {
+    localStorage.setItem("sf_totalProcessed", totalProcessed.toString());
+  }, [totalProcessed]);
   const fileInputRef = useRef(null);
+
+  const [sliderPos, setSliderPos] = useState(50);
+  const sliderRef = useRef(null);
+  const sliderDragging = useRef(false);
+
+  const handleSliderMouseDown = () => { sliderDragging.current = true; };
+  const handleSliderMouseUp = () => { sliderDragging.current = false; };
+  const handleSliderMouseMove = (e) => {
+    if (!sliderDragging.current || !sliderRef.current) return;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    setSliderPos(x * 100);
+  };
 
   const selectedPipelines = Object.entries(pipelines)
     .filter(([, v]) => v)
@@ -242,15 +280,7 @@ export default function Dashboard({ setCurrentPage }) {
                 : "Backend offline — start Flask server"}
             </p>
           </div>
-          <motion.button
-            onClick={() => setCurrentPage("demo")}
-            className="btn-arc font-display text-sm font-600 text-white px-5 py-2.5 rounded-xl relative z-0 flex items-center gap-2"
-            whileHover={{ scale: 1.03, y: -1 }}
-            whileTap={{ scale: 0.97 }}
-            style={{ boxShadow: "0 0 20px rgba(91,143,255,0.3)" }}
-          >
-            <span>+ New Redaction</span>
-          </motion.button>
+
         </motion.div>
 
         {/* Stats row */}
@@ -417,11 +447,53 @@ export default function Dashboard({ setCurrentPage }) {
               {selectedFile?.status === "done" && selectedFile?.resultUrl ? (
                 <div className="relative">
                   {selectedFile.originalUrl ? (
-                    <img
-                      src={selectedFile.resultUrl}
-                      alt="Processed"
-                      className="w-full h-auto max-h-48 object-contain"
-                    />
+                    <div
+                      ref={sliderRef}
+                      className="relative w-full cursor-ew-resize select-none"
+                      onMouseMove={handleSliderMouseMove}
+                      onMouseUp={handleSliderMouseUp}
+                      onMouseLeave={handleSliderMouseUp}
+                    >
+                      {/* Original (full width) */}
+                      <img
+                        src={selectedFile.originalUrl}
+                        alt="Original"
+                        className="w-full h-auto max-h-48 object-contain"
+                      />
+
+                      {/* Processed (clipped) */}
+                      <div
+                        className="absolute inset-0"
+                        style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                      >
+                        <img
+                          src={selectedFile.resultUrl}
+                          alt="Processed"
+                          className="w-full h-auto max-h-48 object-contain"
+                        />
+                      </div>
+
+                      {/* Labels */}
+                      <div className="absolute top-2 left-2 font-mono text-xs text-silver/60 bg-black/60 px-2 py-1 rounded">ORIGINAL</div>
+                      <div className="absolute top-2 right-2 font-mono text-xs text-jade/80 bg-black/60 px-2 py-1 rounded">REDACTED</div>
+
+                      {/* Slider handle */}
+                      <motion.div
+                        className="absolute top-0 bottom-0 flex items-center justify-center cursor-ew-resize"
+                        style={{ left: `${sliderPos}%`, transform: "translateX(-50%)" }}
+                        onMouseDown={handleSliderMouseDown}
+                      >
+                        <div className="w-0.5 h-full bg-gradient-to-b from-transparent via-arc to-transparent absolute" />
+                        <div
+                          className="w-7 h-7 rounded-full bg-gradient-to-br from-arc to-violet flex items-center justify-center relative z-10"
+                          style={{ boxShadow: "0 0 15px rgba(91,143,255,0.6)" }}
+                        >
+                          <svg width="12" height="8" viewBox="0 0 14 10" fill="white">
+                            <path d="M0 5h14M5 1L1 5l4 4M9 1l4 4-4 4" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                          </svg>
+                        </div>
+                      </motion.div>
+                    </div>
                   ) : (
                     <div className="p-4 text-center">
                       <div className="text-2xl text-jade mb-2">✓</div>
